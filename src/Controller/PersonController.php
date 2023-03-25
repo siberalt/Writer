@@ -5,7 +5,9 @@ namespace App\Controller;
 use App\Entity\Person;
 use App\Form\PersonType;
 use App\Repository\PersonRepository;
+use Doctrine\Common\Collections\Criteria;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -18,6 +20,32 @@ class PersonController extends AbstractController
     {
         return $this->render('person/index.html.twig', [
             'people' => $personRepository->findAll(),
+        ]);
+    }
+
+    #[Route('/select2', name: 'app_person_select2', methods: ['GET'])]
+    public function select2Data(Request $request, PersonRepository $repository): JsonResponse
+    {
+        $pageSize = 10;
+        $page = (int)$request->get('page');
+        $peopleCount = $repository->count([]);
+        $maxPage = (int)($peopleCount / $pageSize);
+        $page = min($maxPage, max(0, $page - 1));
+        $offset = $page * $pageSize;
+        /** @var Person[] $people */
+        $people = $repository->matching(
+            (new Criteria())
+                ->setFirstResult($offset)
+                ->setMaxResults($pageSize)
+        )->toArray();
+
+        foreach ($people as &$person){
+            $person = ['id' => $person->getId(), 'text' => $person->getName()];
+        }
+
+        return $this->json([
+            'results' => $people,
+            'more' => $page < $maxPage
         ]);
     }
 
@@ -69,10 +97,12 @@ class PersonController extends AbstractController
     #[Route('/{id}', name: 'app_person_delete', methods: ['POST'])]
     public function delete(Request $request, Person $person, PersonRepository $personRepository): Response
     {
-        if ($this->isCsrfTokenValid('delete'.$person->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $person->getId(), $request->request->get('_token'))) {
             $personRepository->remove($person, true);
         }
 
         return $this->redirectToRoute('app_person_index', [], Response::HTTP_SEE_OTHER);
     }
+
+
 }

@@ -279,6 +279,9 @@
             "./config/packages/messenger.yaml"
         ]
     },
+    "tetranz/select2entity-bundle": {
+        "version": "v3.1.0"
+    },
     "twig/extra-bundle": {
         "version": "v3.5.1"
     }

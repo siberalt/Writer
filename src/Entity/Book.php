@@ -28,6 +28,9 @@ class Book
     #[ORM\ManyToMany(targetEntity: Person::class, mappedBy: 'book')]
     private Collection $people;
 
+    #[ORM\OneToOne(mappedBy: 'book', cascade: ['persist', 'remove'])]
+    private ?Draft $draft = null;
+
     public function __construct()
     {
         $this->people = new ArrayCollection();
@@ -109,6 +112,23 @@ class Book
         if ($this->people->removeElement($person)) {
             $person->removeBook($this);
         }
+
+        return $this;
+    }
+
+    public function getDraft(): ?Draft
+    {
+        return $this->draft;
+    }
+
+    public function setDraft(Draft $draft): self
+    {
+        // set the owning side of the relation if necessary
+        if ($draft->getBook() !== $this) {
+            $draft->setBook($this);
+        }
+
+        $this->draft = $draft;
 
         return $this;
     }
