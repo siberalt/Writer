@@ -18,7 +18,7 @@ class Person
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\ManyToMany(targetEntity: book::class, inversedBy: 'people')]
+    #[ORM\ManyToMany(targetEntity: Book::class, inversedBy: 'people')]
     private Collection $book;
 
     public function __construct()
