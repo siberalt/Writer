@@ -28,8 +28,14 @@ class Book
     #[ORM\ManyToMany(targetEntity: Person::class, mappedBy: 'book')]
     private Collection $people;
 
-    #[ORM\OneToOne(mappedBy: 'book', cascade: ['persist', 'remove'])]
-    private ?Draft $draft = null;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $lastSaveDate = null;
+
+    #[ORM\OneToOne]
+    private ?Book $book = null;
+
+    #[ORM\Column]
+    private ?bool $isDraft = false;
 
     public function __construct()
     {
@@ -39,6 +45,15 @@ class Book
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function copyTo(self $book): void
+    {
+        $book
+            ->setName($this->getName())
+            ->setPageAmount($this->getPageAmount())
+            ->setBrief($this->getBrief())
+            ->setPeople($this->getPeople());
     }
 
     public function getName(): ?string
@@ -90,6 +105,14 @@ class Book
     }
 
     /**
+     * @param Collection $people
+     */
+    public function setPeople(Collection $people): void
+    {
+        $this->people = $people;
+    }
+
+    /**
      * @return Collection<int, Person>
      */
     public function getPeople(): Collection
@@ -116,19 +139,38 @@ class Book
         return $this;
     }
 
-    public function getDraft(): ?Draft
+    public function getLastSaveDate(): ?\DateTimeInterface
     {
-        return $this->draft;
+        return $this->lastSaveDate;
     }
 
-    public function setDraft(Draft $draft): self
+    public function setLastSaveDate(?\DateTimeInterface $lastSaveDate): self
     {
-        // set the owning side of the relation if necessary
-        if ($draft->getBook() !== $this) {
-            $draft->setBook($this);
-        }
+        $this->lastSaveDate = $lastSaveDate;
 
-        $this->draft = $draft;
+        return $this;
+    }
+
+    public function getOriginalBook(): ?Book
+    {
+        return $this->book;
+    }
+
+    public function setOriginalBook(?Book $book): self
+    {
+        $this->book = $book;
+
+        return $this;
+    }
+
+    public function isDraft(): ?bool
+    {
+        return $this->isDraft;
+    }
+
+    public function setIsDraft(bool $isDraft): self
+    {
+        $this->isDraft = $isDraft;
 
         return $this;
     }
