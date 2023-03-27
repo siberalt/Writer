@@ -52,6 +52,8 @@ class BookType extends AbstractType
                     'label' => "Reset draft to original $lastSavedPart"
                 ]);
             }
+        } else {
+            $builder->add('submit', SubmitType::class, ['label' => 'Save']);
         }
     }
 

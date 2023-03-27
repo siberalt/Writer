@@ -12,6 +12,7 @@ use Symfony\Component\Form\SubmitButton;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use function Webmozart\Assert\Tests\StaticAnalysis\null;
 
 #[Route('/book')]
 class BookController extends AbstractController
@@ -52,15 +53,15 @@ class BookController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'app_book_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Book $book, BookRepository $bookRepository): Response
+    public function edit(Request $request, Book $originalBook, BookRepository $bookRepository): Response
     {
-        $draft = $bookRepository->findDraft($book);
+        $draftBook = $bookRepository->findDraft($originalBook);
 
-        if (null !== $draft) {
-            $book = $draft;
-        }
+        $formBook = null !== $draftBook
+            ? Book::cloneOf($draftBook)
+            : Book::cloneOf($originalBook);
 
-        $form = $this->createForm(BookType::class, $book, ['allow_extra_fields' => true]);
+        $form = $this->createForm(BookType::class, $formBook, ['allow_extra_fields' => true]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -77,43 +78,47 @@ class BookController extends AbstractController
                 $resetToOriginalClicked = false;
             }
 
-            dump($book, $book->getOriginalBook());
-
             if ($saveAsOriginal->isClicked()) {
-                if ($book->isDraft()) {
-                    $originalBook = $book->getOriginalBook();
-                    $book->copyTo($originalBook->setLastSaveDate(new DateTime()));
+                if ($formBook->isDraft()) {
+                    $formBook->copyTo($originalBook->setLastSaveDate(new DateTime()));
+                    $originalBook->setIsDraft(false);
+                    $originalBook->setOriginalBook(null);
 
                     $bookRepository->save($originalBook, true);
-                    $bookRepository->remove($book, true);
-                    $book = $originalBook;
+                    $bookRepository->remove($draftBook, true);
                 } else {
-                    $bookRepository->save($book);
-                }
-            } elseif ($saveAsDraft->isClicked()) {
-                if (!$book->isDraft()) {
-                    $draft = (new Book())
-                        ->setIsDraft(true)
-                        ->setOriginalBook($book);
-                    $book->copyTo($draft);
-                } else {
-                    $draft = $book;
+                    $formBook->copyTo($originalBook, true);
+                    $bookRepository->save($originalBook, true);
                 }
 
-                $bookRepository->save($draft, true);
-                $book = $draft;
-            } elseif ($resetToOriginalClicked && $book->isDraft()) {
-                $originalBook = $book->getOriginalBook();
-                //dd($book, $originalBook,$book->getBrief(), $originalBook->getBrief());
-                $bookRepository->remove($book, true);
-                $book = $originalBook;
+                $formBook = $originalBook;
+            } elseif ($saveAsDraft->isClicked()) {
+                if (!$formBook->isDraft()) {
+                    $draftBook = Book::cloneOf($formBook, true)
+                        ->setIsDraft(true)
+                        ->setOriginalBook($originalBook);
+                } else {
+                    $formBook->copyTo($draftBook, true);
+                }
+
+                $bookRepository->save($draftBook, true);
+                $formBook = $draftBook;
+            } elseif ($resetToOriginalClicked && $formBook->isDraft()) {
+                $formBook->copyTo($draftBook, true);
+                $bookRepository->remove($draftBook, true);
+                $formBook = $originalBook;
             }
 
-            $form = $this->createForm(BookType::class, $book, ['allow_extra_fields' => true]);
+            $form = $this->createForm(BookType::class, $formBook, ['allow_extra_fields' => true]);
+        } else {
+            $formBook = null !== $draftBook
+                ? $draftBook
+                : $originalBook;
         }
 
         return $this->renderForm('book/edit.html.twig', [
-            'book' => $book,
+            'originalBook' => $originalBook,
+            'book' => $formBook,
             'form' => $form,
         ]);
     }

@@ -48,4 +48,9 @@ class BookRepository extends ServiceEntityRepository
             'isDraft' => true
         ]);
     }
+
+    public function detach(Book $book)
+    {
+        $this->getEntityManager()->detach($book);
+    }
 }

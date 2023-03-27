@@ -42,17 +42,34 @@ class Book
         $this->people = new ArrayCollection();
     }
 
+    public static function cloneOf(self $book, bool $clearRelations = false): Book
+    {
+        $cloneBook = new self();
+        $book->copyTo($cloneBook, $clearRelations);
+
+        return $cloneBook;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function copyTo(self $book): void
+    public function copyTo(self $book, bool $clearRelations = false): void
     {
+        if ($clearRelations) {
+            /** @var Person $person */
+            foreach ($this->people as $person) {
+                $person->removeBook($this);
+            }
+        }
+
         $book
             ->setName($this->getName())
             ->setPageAmount($this->getPageAmount())
             ->setBrief($this->getBrief())
+            ->setIsDraft($this->isDraft())
+            ->setOriginalBook($this->getOriginalBook())
             ->setPeople($this->getPeople());
     }
 
@@ -101,7 +118,7 @@ class Book
             function (string $names, Person $person) {
                 return $names . "{$person->getName()}, ";
             }, ''
-        ), ',');
+        ), ', ');
     }
 
     /**
@@ -110,6 +127,11 @@ class Book
     public function setPeople(Collection $people): void
     {
         $this->people = $people;
+
+        /** @var Person $person */
+        foreach ($people as $person) {
+            $person->addBook($this);
+        }
     }
 
     /**
